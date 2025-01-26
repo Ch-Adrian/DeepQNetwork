@@ -27,9 +27,7 @@ class DQN(BaseAgent):
 
         def _forward_pass(_):
             q_values = self.model.apply(online_net_params, None, jnp.resize(state.board, (BATCH_SIZE, 16)))
-            # return jnp.argmax(jnp.where(state.action_mask == True, q_values, float("-inf")))
             return jnp.argmax(jnp.where(state.action_mask, q_values, -jnp.inf))
-            # return jnp.argmax(q_values)
 
         # select random action or forward pass through the network based on epsilon
         explore = random.uniform(key) < epsilon
@@ -69,7 +67,6 @@ class DQN(BaseAgent):
 
             return jnp.mean(
                 _loss_fn(online_net_params, target_net_params, states, actions, rewards, next_states, dones),
-                # axis=0,
             )
 
         loss, grads = value_and_grad(_batch_loss_fn)(online_net_params, target_net_params, **experiences)
