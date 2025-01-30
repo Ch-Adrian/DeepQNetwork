@@ -20,16 +20,11 @@ class DQN(BaseAgent):
     def act(self, key: random.PRNGKey, online_net_params: dict, state: jnp.ndarray, epsilon: float):
         def _random_action(subkey):
             action = random.choice(subkey, jnp.where(state.action_mask, size=4)[0])
-            # debug.print("_random_action: {x}", x=action)
             return action
 
         def _forward_pass(_):
             q_values = self.model.apply(online_net_params, None, jnp.resize(state.board, (16,)))[0]
-            # debug.print("_forward_pass(q_values): {x}", x=q_values)
-            where = jnp.where(state.action_mask, q_values, -jnp.inf)
-            # debug.print("_forward_pass(where): {x}", x=where)
-            result = jnp.argmax(where)
-            # debug.print("_forward_pass(result): {x}", x=result)
+            result = jnp.argmax(jnp.where(state.action_mask, q_values, -jnp.inf))
             return result
 
         explore = random.uniform(key) < epsilon
@@ -63,31 +58,17 @@ class DQN(BaseAgent):
                 target = reward + (1 - done) * self.discount * jnp.max(
                     jnp.where(new_action_mask, self.model.apply(target_net_params, None, next_state)[0], -jnp.inf)
                 )
-                # debug.print("_loss_fn(target): {x}", x=target)
-                # debug.print("_loss_fn(state): {x}", x=state)
                 prediction = self.model.apply(online_net_params, None, state)[0][action]
-                # debug.print("_loss_fn(prediction): {x}", x=prediction)
                 return jnp.square(target - prediction)
 
-            # debug.print("_batch_loss_fn(states): {x}", x=states)
-            # debug.print("_batch_loss_fn(actions): {x}", x=actions)
-            # debug.print("_batch_loss_fn(rewards): {x}", x=rewards)
-            # debug.print("_batch_loss_fn(next_states): {x}", x=next_states)
-            # debug.print("_batch_loss_fn(new_action_masks): {x}", x=new_action_masks)
-            # debug.print("_batch_loss_fn(dones): {x}", x=dones)
             loss = _loss_fn(online_net_params, target_net_params, states, actions, rewards, next_states, new_action_masks, dones)
-            # loss = jnp.array([2,3,4])
-            # debug.print("_batch_loss_fn(loss): {x}", x=loss)
             mse = jnp.mean(loss)
-            # debug.print("_batch_loss_fn(mse): {x}", x=mse)
             return mse
 
         loss, grads = value_and_grad(_batch_loss_fn)(online_net_params, target_net_params, **experiences)
         updates, optimizer_state = optimizer.update(grads, optimizer_state)
         online_net_params = optax.apply_updates(online_net_params, updates)
         return online_net_params, optimizer_state, loss
-
-    # below part is parrallelized for batch processing
 
     @partial(jit, static_argnums=(0))
     def batch_act(self, key: random.PRNGKey, online_net_params: dict, state: jnp.ndarray, epsilon: float):
