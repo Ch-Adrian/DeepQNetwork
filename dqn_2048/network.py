@@ -1,5 +1,5 @@
 from typing import Sequence
-from jax import jit, lax, random, vmap
+from jax import jit, lax, random, vmap, debug
 import haiku as hk
 import jax
 import jax.numpy as jnp

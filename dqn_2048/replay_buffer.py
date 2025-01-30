@@ -1,6 +1,6 @@
 from functools import partial
 
-from jax import jit, random, tree_map, vmap
+from jax import jit, random, tree_map, vmap, debug
 
 from base_buffer import BaseReplayBuffer
 
@@ -33,5 +33,6 @@ class ReplayBuffer(BaseReplayBuffer):
         key, subkey = random.split(key)
         indexes = random.randint(subkey, shape=(self.batch_size,), minval=0, maxval=current_buffer_size)
         experiences = sample_batch(indexes, buffer_state)
+        # debug.print("sample(experiences): {x}", x=experiences)
 
         return experiences, subkey
